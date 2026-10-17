@@ -1,0 +1,9 @@
+src/build/
+src/test-results/*
+!src/test-results/.gitkeep
+src/studio-*.png
+src/window-preview.png
+*.log
+*.user
+.vs/
+release/

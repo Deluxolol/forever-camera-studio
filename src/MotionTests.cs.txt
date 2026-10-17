@@ -1,0 +1,31 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using Machinae.Forever;
+class MotionTests {
+    static void Near(double actual,double expected,string name) {if(Math.Abs(actual-expected)>0.001)throw new Exception(name+": "+actual+" != "+expected);}
+    static void Reject(Action action,string name) {bool rejected=false;try{action();}catch{rejected=true;}if(!rejected)throw new Exception("Accepted "+name);}
+    static List<CameraPoint> Route() {return new List<CameraPoint>{new CameraPoint{X=0,Y=0,Fov=60,Yaw=359},new CameraPoint{X=10,Y=10,Fov=90,Yaw=1},new CameraPoint{X=20,Y=0,Fov=120,Yaw=3}};}
+    static void Main(string[] args) {
+        Near(CameraPoint.FovDegrees((float)(140*Math.PI/180)),140,"Native upper FOV boundary");
+        Near(CameraPoint.FovDegrees((float)(20*Math.PI/180)),20,"Native lower FOV boundary");
+        var motion=new CameraMotion();var route=Route();motion.Start(route,2,false,true);
+        var mid=motion.Advance(1,route[0]);Near(mid.X,10,"Bezier X");Near(mid.Y,5,"Bezier curve");Near(mid.Fov,90,"Bezier FOV");Near(mid.Yaw,1,"Shortest yaw across zero");
+        var end=motion.Advance(1,mid);Near(end.X,20,"Last point");if(motion.Playing)throw new Exception("Path did not stop.");
+        motion.Start(route,2,false,false);Near(motion.Advance(1,route[0]).Y,10,"Linear path passes middle point");
+        motion.Start(route,2,true,true);motion.Advance(2.5,route[0]);Near(motion.Progress,0.25,"Loop progress");if(!motion.Playing)throw new Exception("Loop stopped.");
+        motion.Stop();if(motion.Advance(1,route[0])!=null)throw new Exception("Stopped motion still writes.");
+        motion.AutoEnabled=true;motion.PanX=2;motion.Rotation=30;var auto=motion.Advance(0.05,route[0]);Near(auto.X,0.1,"Auto distance");Near(auto.Yaw,0.5,"Auto yaw");
+        motion.Stop();motion.Start(route,2,false,true);route[0].X=999;Near(motion.Advance(0,route[0]).X,0,"Playback isolates edits");
+        Reject(()=>motion.Advance(double.NaN,route[0]),"NaN time");Reject(()=>new CameraPoint{X=float.NaN}.Validate(),"NaN position");Reject(()=>motion.Start(Route(),double.PositiveInfinity,false,true),"infinite duration");
+        string directory=Path.GetFullPath(args[0]);Directory.CreateDirectory(directory);string path=Path.Combine(directory,"motion preset.xml");
+        Reject(()=>new CameraProject{ViewDistance=float.NaN}.Validate(),"NaN view distance");
+        Reject(()=>new CameraProject{ViewDistance=2999}.Validate(),"view distance below native minimum");
+        Reject(()=>new CameraProject{FogDistance=float.NaN}.Validate(),"NaN fog distance");
+        var preset=new CameraProject{Points=Route(),Speed=42,Duration=12,PanZ=-2,Bezier=false,ViewDistance=12345,FogDistance=18000};preset.Save(path);var loaded=CameraProject.Load(path);Near(loaded.FogDistance,18000,"Preset fog distance");Near(loaded.ViewDistance,12345,"Preset view distance");Near(loaded.Speed,42,"Preset speed");Near(loaded.Points[1].Y,10,"Preset point");if(loaded.Bezier)throw new Exception("Preset options lost.");
+        string old=File.ReadAllText(path).Replace("<ViewDistance>12345</ViewDistance>","").Replace("<FogDistance>18000</FogDistance>","");File.WriteAllText(Path.Combine(directory,"older preset.xml"),old);Near(CameraProject.Load(Path.Combine(directory,"older preset.xml")).ViewDistance,7000,"Older preset gets default view distance");Near(CameraProject.Load(Path.Combine(directory,"older preset.xml")).FogDistance,20000,"Older preset gets default fog distance");
+        preset.Speed=25;preset.Save(path);Near(CameraProject.Load(path).Speed,25,"Atomic preset replacement");
+        string invalid=Path.Combine(directory,"invalid.xml");File.WriteAllText(invalid,"<!DOCTYPE x [<!ENTITY a SYSTEM 'file:///does-not-exist'>]><CameraProject>&a;</CameraProject>");Reject(()=>CameraProject.Load(invalid),"DTD preset");
+        Console.WriteLine("PASS: Bezier/linear geometry, endpoint stop, yaw wrap, loop, auto motion, stop, edit isolation, invalid input, XML round-trip/replacement and DTD rejection.");
+    }
+}

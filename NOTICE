@@ -1,0 +1,17 @@
+Forever Camera Studio is an independent, unofficial project.
+
+World of Warcraft, Blizzard Entertainment and associated game content belong
+to their respective owners. This repository does not distribute the game,
+the old Machinae/N3KCORE binaries, Free Far Sight binaries, or game assets.
+
+The UI was developed with Free Far Sight as a visual reference. That project's
+name does not imply endorsement, affiliation or permission to use Blizzard's
+software. The blue eye logo included here is the project's own simple design.
+
+Helvetica Neue and Segoe UI are third-party font families. No font binaries
+are included or licensed by this repository. The application may use compatible
+locally installed Helvetica Neue faces, with a Segoe UI fallback.
+
+The MIT license applies to the project code and original logo supplied here.
+It does not grant rights to third-party software, game assets or trademarks,
+nor does it override game terms of service.
